@@ -4,8 +4,12 @@ const server = new Server();
 
 function error(err) {
   console.error(err);
-  process.exit(1);
+  //process.exit(1);
 }
+
+//Nos servira para guardar las conexiones al server (nombre y usario)
+const connections = new Map();
+const nombres = new Array();
 
 function start(port) {
   //Significa que alguien se conecto al server y sacamos su IP y puerto
@@ -19,23 +23,41 @@ function start(port) {
 
     //Este va a ser cuando tenga que leerse algo de información del socket
     socket.on("data", (data) => {
-      if (data == "END") {
+      if (!connections.has(socket)) {
+        if(nombres.includes(data)){
+            console.log("ESTE NOMBRE YA ESTA EN USO")
+            error("Escribe números");
+        }else{
+            nombres.push(data)
+            connections.set(socket, data);
+        }
+      } else if (data == "END") {
         socket.end();
+        connections.delete(socket)
       } else {
-        socket.write(
-          "Reenviando mensaje del cliente desde el servidor al cliente " + data
-        );
+        const full = `${connections.get(socket)} -> ${data}`;
+        //socket.write(full);
+        send(full, socket)
       }
     });
   });
 
-  server.listen({ host: "0.0.0.0", port: port }, () => {
+  server.listen({ host: "127.0.0.1", port: port }, () => {
     console.log(`Server is RUNNING IN PORT ${port}`);
   });
 
-  server.on("error", (err)=>{
+  server.on("error", (err) => {
     error(err.message);
-  })
+  });
+}
+
+function send(data, origin) {
+    for(const socket of connections.keys()){
+        //console.log(connections.keys())
+        if(socket != origin){
+            socket.write(data)
+        }
+    }
 }
 
 const main = () => {
